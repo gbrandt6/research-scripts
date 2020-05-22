@@ -1,0 +1,5 @@
+#Counting fastq reads
+echo $(cat pico.550.assembled.fastq | wc -l)/4 | bc
+
+#Counting fasta reads
+grep ">" filename.fasta > wc -l

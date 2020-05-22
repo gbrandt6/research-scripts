@@ -1,0 +1,75 @@
+#Trimming steps
+
+module load fastqc/0.11.2
+module load scythe/0.993
+shared=/gpfs/pace2/project/bio-konstantinidis/shared3
+name=pico.131;
+location=~/data/projects/pico/analysis/trimmed_reads;
+stats_location=~/data/projects/pico/analysis/trimming_stats
+final_location=~/data/projects/pico/analysis/final_fasta
+
+#reformat fasta file
+~/data/apps/enveomics/Scripts/FastQ.tag.rb -i orig_location/$name.1.fastq -p "$name" -s "/1" -o $location/$name.1.fastq
+
+#Dynamictrim
+SolexaQA++ dynamictrim $location/$name.1.fastq -h 20 -d $location
+SolexaQA++ lengthsort $location/$name.1.fastq.trimmed -l 50 -d $location
+
+#Scythe
+scythe -a /gpfs/pace1/project/bio-konstantinidis/shared3/apps/Trimmomatic-0.32/adapters/ALL-PE.fa
+      $location/$name.1.fastq.trimmed.single > $location/$name.1.clipped.all.fastq
+SolexaQA++ lengthsort $location/$name.1.clipped.all.fastq -l 50 -d $location
+rm $location/$name.1.clipped.all.fastq
+mv $location/$name.1.clipped.all.fastq.single $location/$name.1.clipped.fastq
+
+#FastQC
+fastqc $location/$name.1.clipped.fastq -o $stats_location
+fastqc $location/$name.1.fastq -o $stats_location
+
+#Making fasta file
+cat $location/$name.1.clipped.fastq | paste - - - - | awk 'BEGIN{FS="\\t"}{print ">"substr($1,2)"\\n"$2}' > $final_location/$name.SingleReads.fasta
+
+#STATISTICS
+RAW_READS=$(cat $location/$name.1.fastq | paste - - - - | wc -l | sed -e 's/ *//')
+RAW_LENGTH=$(head -n 40000 $location/$name.1.fastq | paste - - - - | awk 'BEGIN{FS="\\t"}{SUM+=length($2)}END{print SUM/NR}')
+TRIMMED_READS=$(cat $location/$name.1.clipped.fastq | paste - - - - | wc -l | sed -e 's/ *//')
+TRIMMED_LENGTH=$(head -n 40000 $location/$name.1.clipped.fastq | paste - - - - | awk 'BEGIN{FS="\\t"}{SUM+=length($2)}END{print SUM/NR}')
+echo "
+RAW_LENGTH:      $RAW_LENGTH
+RAW_READS:       $RAW_READS
+TRIMMED_LENGTH:  $TRIMMED_LENGTH
+TRIMMED_READS:   $TRIMMED_READS
+" >  $stats_location/$name.summary.txt;
+
+#MORE STATISTICS
+echo "Statistics after first step [SolexaQA++ dynamictrim]" >> $stats_location/$name.summary.txt;
+cat $location/$name.1.fastq.trimmed.summary.txt >> $stats_location/$name.summary.txt;
+echo "
+Statistics after second step [Scythe clipping]" >> $stats_location/$name.summary.txt;
+cat $location/$name.1.clipped.all.fastq.summary.txt >> $stats_location/$name.summary.txt;
+echo "Number of fasta sequences:" >> $stats_location/$name.summary.txt;
+grep ">" $final_location/$name.SingleReads.fasta | wc -l >> $stats_location/$name.summary.txt
+
+#move things to temp file
+mkdir $location/$name.tmp
+mv $location/$name.1.clipped.all.fastq.discard $location/$name.tmp/
+mv $location/$name.1.clipped.all.fastq.summary.txt $location/$name.tmp/
+mv $location/$name.1.clipped.all.fastq.summary.txt.pdf $location/$name.tmp/
+mv $location/$name.1.fastq.trimmed $location/$name.tmp/
+mv $location/$name.1.fastq.trimmed.discard $location/$name.tmp/
+mv $location/$name.1.fastq_trimmed.segments $location/$name.tmp/
+mv $location/$name.1.fastq_trimmed.segments_hist.pdf $location/$name.tmp/
+mv $location/$name.1.fastq.trimmed.single $location/$name.tmp/
+mv $location/$name.1.fastq.trimmed.summary.txt $location/$name.tmp/
+mv $location/$name.1.fastq.trimmed.summary.txt.pdf $location/$name.tmp/
+
+#gzip things in temp file
+gzip $location/$name.tmp/$name.1.clipped.all.fastq.discard
+gzip $location/$name.tmp/$name.1.fastq.trimmed
+gzip $location/$name.tmp/$name.1.fastq.trimmed.discard
+
+#gzip other things
+gzip ~/data/projects/pico/analysis/PEAR/$name.assembled.fastq.gz
+gzip ~/data/projects/pico/analysis/PEAR/$name.discarded.fastq.gz
+gzip ~/data/projects/pico/analysis/PEAR/$name.unassembled.forward.fastq.gz
+gzip ~/data/projects/pico/analysis/PEAR/$name.unassembled.reverse.fastq.gz

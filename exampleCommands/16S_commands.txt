@@ -1,0 +1,74 @@
+#My files
+127 131 132 244 245 247 264 265 266 281 282 284 304 497 539 540 551 552 550
+
+##############Split files##########################
+perl FastA.split.pl metagenome.A.fasta 100
+~/data/apps/enveomics/Scripts/FastA.split.pl ../final_fasta/pico.264.SingleReads.fasta 100
+#!/bin/bash
+#PBS -N PICO_splitfiles_550
+#PBS -l nodes=1:ppn=1
+#PBS -l mem=2g
+#PBS -l walltime=12:00:00
+#PBS -q iw-shared-6
+#PBS -o log/${PBS_JOBNAME}_${PBS_JOBID}.out
+#PBS -e log/${PBS_JOBNAME}_${PBS_JOBID}.err
+#PBS -m abe
+#PBS -M gbrandt6@gatech.edu
+
+cd $PBS_O_WORKDIR
+
+name=pico.550
+script=~/data/apps/enveomics/Scripts/FastA.split.pl
+input_location=~/data/projects/pico/analysis/final_fasta
+output_location=~/data/projects/pico/analysis/06.split_files
+
+$script $input_location/$name.SingleReads.fasta $output_location/$name 100
+
+#############Running sortmeRNA [parallel]####################
+!/bin/bash
+#PBS -N PICO_sortmeRNA_num
+#PBS -l nodes=1:ppn=1
+#PBS -l mem=2gb
+#PBS -l walltime=12:00:00
+#PBS -q iw-shared-6
+#PBS -t 1-100
+#PBS -o log/${PBS_JOBNAME}_${PBS_JOBID}.out
+#PBS -e log/${PBS_JOBNAME}_${PBS_JOBID}.err
+#PBS -m abe
+#PBS -M gbrandt6@gatech.edu
+
+cd $PBS_O_WORKDIR
+
+name=pico.num
+shared=/gpfs/pace2/project/bio-konstantinidis/shared3
+sortmeRNA=~/shared3/apps/sortmerna-2.1/sortmerna
+location=~/data/projects/pico/analysis/06.split_files
+output_location=~/data/projects/pico/analysis/07.RNA_seqs
+
+
+
+~/shared3/apps/sortmerna-2.1/sortmerna -m 3936 -a 8 -ref db.fasta,db.idx --reads INPUT.fasta --aligned ALIGNED_OUT --blast '1' --log -v --other OTHER_OUT --fastx
+-m: int mbytes for loading reads into memory
+-a: threads to use
+-ref: reference and index files
+--aligned: output base name
+--blast '1' tabular blast ouput
+--fastx fasta output
+-v: verbose
+--other rejected reads location
+
+
+
+
+database(which databases should I be using??):
+silva-arc-16s-id95.fasta
+silva-arc-23s-id98.fasta
+silva-bac-16s-id90.fasta
+silva-bac-23s-id98.fasta
+silva-euk-18s-id95.fasta
+silva-euk-28s-id98.fasta
+
+./indexdb_rna --ref db.fasta,db.idx
+
+
+$sortmeRNA -m 3936 -a 8	--ref $db/silva-arc-16s-id95.fasta,$index/silva-arc-16s-id95.idx --reads $input_location/$name.$PBS_ARRAYID.fa	--aligned $output_location/$name.$PBS_ARRAYID.silva-arc-16s-id95 --blast '1' --log -v --other $output_location/$name.$PBS_ARRAYID.silva-arc-16s-id95.other --fastx
