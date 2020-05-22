@@ -1,0 +1,29 @@
+#!/bin/bash
+#PBS -l nodes=1:ppn=10
+#PBS -k eo
+
+module load bowtie2/2.3.2
+module load samtools/0.1.18
+
+reads_dir=$DIR
+assembly=$ASSEMBLY
+reads=$READS
+output=$OUTPUT
+shared=/gpfs/pace2/project/bio-konstantinidis/shared3/apps/metabat/
+
+#change to current working directory
+cd $reads_dir
+
+CMD1="bowtie2-build $assembly $assembly"
+CMD2="bowtie2 -x $assembly --interleaved $reads -S $assembly.sam"
+CMD3="samtools view -bS $assembly.sam -o $assembly.bam"
+CMD4="samtools sort $assembly.bam $assembly.sorted"
+CMD5="$shared/jgi_summarize_bam_contig_depths --outputDepth $output.depth.txt $assembly.sorted.bam"
+CMD6="$shared/metabat2 -i $assembly -a $output.depth.txt -o $output"
+
+time $CMD1
+time $CMD2
+time $CMD3
+time $CMD4
+time $CMD5
+time $CMD6

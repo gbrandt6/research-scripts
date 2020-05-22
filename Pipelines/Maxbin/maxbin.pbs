@@ -1,0 +1,20 @@
+#!/bin/bash
+#PBS -l nodes=1:ppn=10
+#PBS -k eo
+
+module load idba/1.1.1
+module load bowtie2/2.3.2
+module load hmmer/3.1b1
+
+reads_dir=$DIR
+assembly=$ASSEMBLY
+reads=$READS
+output=$OUTPUT
+shared=/nv/hmicro1/gbrandt6/data/apps/MaxBin-2.2.4
+
+#change to current working directory
+cd $reads_dir
+
+CMD="$shared/run_MaxBin.pl -contig $assembly -reads $reads -out $output"
+
+time $CMD
